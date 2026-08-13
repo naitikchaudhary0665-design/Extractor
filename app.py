@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import io
 import time
 import json
@@ -11,7 +12,8 @@ st.title("🚀 Advanced Bulk Invoice Extractor")
 
 if "GEMINI_API_KEY" in st.secrets:
     try:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        # New Google GenAI Client Initialization
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     except Exception as e:
         st.error(f"API Config Error: {e}")
 else:
@@ -24,32 +26,34 @@ if uploaded_files:
         all_data = []
         progress_bar = st.progress(0)
         
-        # --- SAFE MODEL FINDER (Blacklisting 2.5) ---
-        def get_safe_model():
-            try:
-                for m in genai.list_models():
-                    model_name = m.name.replace("models/", "")
-                    # 2.5 ya purane models ko skip karein, sirf 1.5 ya stable flash uthayein
-                    if 'generateContent' in m.supported_generation_methods:
-                        if 'flash' in model_name and '2.5' not in model_name:
-                            return genai.GenerativeModel(model_name)
-            except Exception:
-                pass
-            
-            # Fallback agar list_models fail ho jaye
-            return genai.GenerativeModel("gemini-1.5-flash")
-
-        model = get_safe_model()
-
         for index, file in enumerate(uploaded_files):
+            st.write(f"Processing ({index+1}/{len(uploaded_files)}): {file.name}")
             try:
                 file_bytes = file.read()
-                prompt = "Extract party_name, invoice_date, invoice_number, and list items (item_name, quantity, rate, total_amount, cgst_amount, sgst_amount, igst_amount). Return ONLY JSON."
                 
-                response = model.generate_content([
-                    {"mime_type": "application/pdf" if file.type == "application/pdf" else "image/jpeg", "data": file_bytes},
-                    prompt
-                ])
+                prompt = """
+                Extract details from this invoice. Return ONLY a valid JSON object. 
+                Structure:
+                {
+                  "invoice_metadata": {"party_name": "string", "invoice_date": "string", "invoice_number": "string"},
+                  "line_items": [
+                    {"item_name": "string", "quantity": 0, "rate": 0, "total_amount": 0, "cgst_amount": 0, "sgst_amount": 0, "igst_amount": 0}
+                  ]
+                }
+                If value is missing, use null or 0. Do not use markdown backticks in output.
+                """
+                
+                # Using the latest recommended model with new client
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[
+                        types.Part.from_bytes(
+                            data=file_bytes,
+                            mime_type="application/pdf" if file.type == "application/pdf" else "image/jpeg",
+                        ),
+                        prompt
+                    ]
+                )
                 
                 res_text = response.text.replace("```json", "").replace("```", "").strip()
                 data = json.loads(res_text)
@@ -72,6 +76,7 @@ if uploaded_files:
             except Exception as e:
                 st.error(f"Error in {file.name}: {e}")
             
+            time.sleep(1)
             progress_bar.progress((index + 1) / len(uploaded_files))
 
         if all_data:
@@ -81,4 +86,4 @@ if uploaded_files:
                 df.to_excel(writer, index=False, sheet_name='Data')
             st.download_button("📥 Download Excel", data=output.getvalue(), file_name="Invoice_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         else:
-            st.warning("No data extracted. Check your files or API permissions.")
+            st.warning("No data extracted. Please check your file content.")
