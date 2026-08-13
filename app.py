@@ -47,7 +47,7 @@ st.divider()
 
 # --- 3. INVOICE TYPE SELECTION ---
 invoice_type = st.radio(
-    "📌 Select Bill Type (Aap kis tarah ka bill upload kar rahe hain?):",
+    "📌 Select Bill Type",
     ("Sale Invoice", "Purchase Bill"),
     horizontal=True,
 )
@@ -142,32 +142,32 @@ if uploaded_files:
           )
           continue
 
-        status_text.text(f"🤖 AI analyzing Tally invoice details for '{file_name}'...")
+        status_text.text(f"🤖 AI analyzing invoice details for '{file_name}'...")
 
         prompt = f"""
-                You are an expert Chartered Accountant specializing in Tally ERP/Prime invoice auditing and data extraction.
-                Analyze the invoice text below very carefully.
-                
+                You are an expert Chartered Accountant and Tally ERP/Prime data extraction specialist.
+                Analyze the invoice text below very carefully to extract item-wise details, quantities, amounts, and exact taxes.
+
                 PARTY EXTRACTION RULE:
                 - {party_instruction}
+
+                CRITICAL GUIDELINES (Quantity, Amount & Tax):
+                1. Extract the exact "Quantity" (Qty) mentioned for each item row. If not specified, write "1".
+                2. Extract the correct taxable "Amount" for that specific item row.
+                3. Map CGST, SGST, and IGST accurately either from item-level columns or by proportionally distributing the bottom tax summary table. Do not leave them as "0" if tax is visible.
 
                 MANDATORY JSON KEYS FOR EVERY ITEM ROW:
                 - "Invoice No" (Find the exact bill/invoice number)
                 - "Date" (Invoice date strictly in DD-MM-YYYY format)
-                - "Party GST No" (15-digit GSTIN of the correct party)
+                - "Party GST No" (15-digit GSTIN of the correct party, or "Not Found")
                 - "Party Name" (Name of the correct party)
                 - "Item Name" (Exact product description from the items table)
                 - "HSN/SAC" (HSN code if present, else "Not Found")
+                - "Quantity" (Quantity of the item row, e.g., numbers like 5, 10, etc.)
                 - "Amount" (Taxable amount for that specific item row)
-                - "CGST" (CGST amount for that item row from Tally tax columns or tax summary, or "0")
-                - "SGST" (SGST amount for that item row from Tally tax columns or tax summary, or "0")
-                - "IGST" (IGST amount for that item row from Tally tax columns or tax summary, or "0")
-
-                TALLY INVOICE GUIDELINES:
-                1. Tally invoices often have separate tax columns next to the item row or a tax analysis table at the bottom. Read them carefully and map them to each respective item.
-                2. If the tax is given as a combined total at the bottom for all items, distribute it proportionally among the item rows based on their taxable amounts.
-                3. Do NOT leave CGST, SGST, or IGST as "0" if tax amounts are clearly visible in the text. Calculate or map them precisely.
-                4. If any text/number is missing, write "Not Found" for text or "0" for numbers.
+                - "CGST" (Exact CGST amount for that item row, else "0")
+                - "SGST" (Exact SGST amount for that item row, else "0")
+                - "IGST" (Exact IGST amount for that item row, else "0")
 
                 Invoice Text:
                 {text}
