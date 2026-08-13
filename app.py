@@ -44,8 +44,8 @@ if uploaded_files:
         if "GEMINI_API_KEY" not in st.secrets:
             st.error("Kripya pehle Streamlit secrets mein API key set karein.")
         else:
-            # Sahi aur updated Gemini model initialization
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            # Latest active Gemini model initialization
+            model = genai.GenerativeModel("gemini-3.6-flash")
             
             progress_bar = st.progress(0)
             total_files = len(uploaded_files)
