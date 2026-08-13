@@ -1,9 +1,7 @@
 streamlit
 pandas
-pdfplumber
-PyMuPDF
-Pillow
-pytesseract
-groq
-openpyxl
 google-generativeai
+Pillow
+xlsxwriter
+openpyxl
+pytesseract
