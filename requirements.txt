@@ -1,7 +1,6 @@
 streamlit
 pandas
-google-generativeai
+google-genai
 Pillow
 xlsxwriter
 openpyxl
-pytesseract
