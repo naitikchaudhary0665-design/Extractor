@@ -24,18 +24,22 @@ if uploaded_files:
         all_data = []
         progress_bar = st.progress(0)
         
-        # --- DYNAMIC MODEL FINDER (Yahi asli jugad hai) ---
-        def get_model():
-            # Sirf 'flash' wale models dhundo jo 'generateContent' support karte hain
-            for m in genai.list_models():
-                if 'flash' in m.name and 'generateContent' in m.supported_generation_methods:
-                    return genai.GenerativeModel(m.name)
-            return None # Agar koi nahi mila toh None
+        # --- SAFE MODEL FINDER (Blacklisting 2.5) ---
+        def get_safe_model():
+            try:
+                for m in genai.list_models():
+                    model_name = m.name.replace("models/", "")
+                    # 2.5 ya purane models ko skip karein, sirf 1.5 ya stable flash uthayein
+                    if 'generateContent' in m.supported_generation_methods:
+                        if 'flash' in model_name and '2.5' not in model_name:
+                            return genai.GenerativeModel(model_name)
+            except Exception:
+                pass
+            
+            # Fallback agar list_models fail ho jaye
+            return genai.GenerativeModel("gemini-1.5-flash")
 
-        model = get_model()
-        if not model:
-            st.error("No compatible Flash model found for your API key. Check AI Studio permissions.")
-            st.stop()
+        model = get_safe_model()
 
         for index, file in enumerate(uploaded_files):
             try:
@@ -58,8 +62,12 @@ if uploaded_files:
                         "Invoice Date": meta.get("invoice_date", "N/A"),
                         "Invoice Number": meta.get("invoice_number", "N/A"),
                         "Item Name": item.get("item_name", "N/A"),
+                        "Quantity": item.get("quantity", 0),
+                        "Rate": item.get("rate", 0),
                         "Total Amount": item.get("total_amount", 0),
-                        "CGST": item.get("cgst_amount", 0)
+                        "CGST Amount": item.get("cgst_amount", 0),
+                        "SGST Amount": item.get("sgst_amount", 0),
+                        "IGST Amount": item.get("igst_amount", 0)
                     })
             except Exception as e:
                 st.error(f"Error in {file.name}: {e}")
@@ -69,5 +77,8 @@ if uploaded_files:
         if all_data:
             df = pd.DataFrame(all_data)
             output = io.BytesIO()
-            df.to_excel(output, index=False)
-            st.download_button("📥 Download Excel", data=output.getvalue(), file_name="Invoice_Data.xlsx")
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Data')
+            st.download_button("📥 Download Excel", data=output.getvalue(), file_name="Invoice_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.warning("No data extracted. Check your files or API permissions.")
