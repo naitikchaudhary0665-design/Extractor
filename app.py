@@ -4,8 +4,8 @@ import pdfplumber
 import io
 import re
 
-st.set_page_config(page_title="Smart Invoice Extractor", layout="wide")
-st.title("🚀 Clean Invoice Extractor (No API Required)")
+st.set_page_config(page_title="Clean Invoice Extractor", layout="wide")
+st.title("🚀 Perfect Invoice Extractor (No API Required)")
 
 uploaded_files = st.file_uploader("Upload Invoices (PDF)", type=["pdf"], accept_multiple_files=True)
 
@@ -24,27 +24,35 @@ if uploaded_files:
                         if text:
                             extracted_text += text + "\n"
                 
-                # Invoice fields find karne ke liye
+                # Invoice Date dhundne ke liye
                 date_match = re.search(r'Date[:]?\s*([0-9/]+)', extracted_text, re.IGNORECASE)
                 inv_date = date_match.group(1) if date_match else "N/A"
                 
-                # Items aur amounts ko lines se dhundna
+                # Invoice Number dhundne ke liye
+                inv_no_match = re.search(r'(?:Invoice|Inv|Bill)\s*(?:No|Number)[:#]?\s*([A-Za-z0-9\-_/]+)', extracted_text, re.IGNORECASE)
+                inv_number = inv_no_match.group(1) if inv_no_match else "N/A"
+
                 lines = extracted_text.split("\n")
                 for line in lines:
-                    # Agar line mein item description aur price (USD/Rs) hai
-                    if "USD" in line or "$" in line or "Total" in line or "Membership" in line or "Discount" in line:
-                        # Price extract karein
-                        price_match = re.search(r'([-\$0-9\.]+\b)', line)
-                        amount = price_match.group(1) if price_match else "0"
+                    # Sirf unhi lines ko uthayenge jisme item description aur price ho (jaise USD ya $)
+                    if ("USD" in line or "$" in line) and "Sub Total" not in line and "Total" not in line and "Balance" not in line and "Credit" not in line:
                         
-                        # Item name alag karein
-                        item_name = line.replace(amount, "").strip()
+                        # Price extract karein (jaise $37.50 ya 50.00)
+                        price_match = re.findall(r'[\$]?([0-9]+\.[0-9]{2})', line)
+                        amount = price_match[-1] if price_match else "0"
+                        
+                        # Item name me se price hata kar clean name rakhein
+                        item_name = line
+                        for p in price_match:
+                            item_name = item_name.replace(p, "").replace("USD", "").replace("$", "").strip()
+                        
                         if not item_name:
-                            item_name = line
+                            item_name = "Invoice Item"
                             
                         all_data.append({
                             "File Name": file.name,
                             "Invoice Date": inv_date,
+                            "Invoice Number": inv_number,
                             "Item Name": item_name,
                             "Quantity": 1,
                             "Rate": amount,
@@ -55,7 +63,7 @@ if uploaded_files:
                         })
                         
             except Exception as e:
-                st.error(f"Error in {file.name}: {e}")
+                st.error(f5"Error in {file.name}: {e}")
             
             progress_bar.progress((index + 1) / len(uploaded_files))
 
@@ -63,7 +71,7 @@ if uploaded_files:
             df = pd.DataFrame(all_data)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Parsed_Data')
+                df.to_excel(writer, index=False, sheet_name='Clean_Data')
             st.download_button("📥 Download Clean Excel", data=output.getvalue(), file_name="Clean_Invoice_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         else:
-            st.warning("Koi data extract nahi ho paya.")
+            st.warning("Koi data match nahi hua.")
