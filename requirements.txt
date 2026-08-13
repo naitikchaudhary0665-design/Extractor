@@ -1,7 +1,9 @@
 streamlit
 pandas
+groq
 pdfplumber
-Pillow
-xlsxwriter
-openpyxl
+PyMuPDF
 pytesseract
+Pillow
+openpyxl
+xlsxwriter
