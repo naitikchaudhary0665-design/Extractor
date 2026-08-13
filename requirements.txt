@@ -1,6 +1,7 @@
 streamlit
 pandas
-google-genai
+pdfplumber
 Pillow
 xlsxwriter
 openpyxl
+pytesseract
