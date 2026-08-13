@@ -63,7 +63,8 @@ if uploaded_files:
                         })
                         
             except Exception as e:
-                st.error(f5"Error in {file.name}: {e}")
+                # Yeh rahi line jisme 'f5' ki jagah sirf 'f' kar diya gaya hai
+                st.error(f"Error in {file.name}: {e}")
             
             progress_bar.progress((index + 1) / len(uploaded_files))
 
