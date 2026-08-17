@@ -38,8 +38,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<p class="sub-text">Select invoice type, upload images or PDFs, and'
-    ' extract data accurately into an Excel sheet.</p>',
+    '<p class="sub-text">Select invoice type, upload 20-25+ images or PDFs, and extract all data accurately into a single Excel sheet.</p>',
     unsafe_allow_html=True,
 )
 
@@ -47,23 +46,23 @@ st.divider()
 
 # --- 3. INVOICE TYPE SELECTION ---
 invoice_type = st.radio(
-    "📌 Select Bill Type",
+    "📌 Select Bill Type (Aap kis tarah ka bill upload kar rahe hain?):",
     ("Sale Invoice", "Purchase Bill"),
     horizontal=True,
 )
 
 st.write("")
 
-# --- 4. FILE UPLOADER ---
+# --- 4. FILE UPLOADER (Supports 25+ files) ---
 uploaded_files = st.file_uploader(
-    "📁 Drop your Invoice Images or PDFs here (JPG, PNG, PDF)",
+    "📁 Drop your Invoice Images or PDFs here (You can select 20-25+ files at once)",
     type=["pdf", "png", "jpg", "jpeg"],
     accept_multiple_files=True,
 )
 
 if uploaded_files:
   st.info(
-      f"📁 Total **{len(uploaded_files)}** file(s) uploaded as **{invoice_type}**."
+      f"📁 Total **{len(uploaded_files)}** file(s) selected as **{invoice_type}**."
   )
 
   if st.button("🚀 Process & Extract Data"):
@@ -142,32 +141,36 @@ if uploaded_files:
           )
           continue
 
-        status_text.text(f"🤖 AI analyzing invoice details for '{file_name}'...")
+        status_text.text(f"🤖 AI analyzing details & taxes for '{file_name}'...")
 
         prompt = f"""
                 You are an expert Chartered Accountant and Tally ERP/Prime data extraction specialist.
-                Analyze the invoice text below very carefully to extract item-wise details, quantities, amounts, and exact taxes.
+                Analyze the invoice text below very carefully to extract item-wise details, rates, quantities, taxes, and amounts.
 
                 PARTY EXTRACTION RULE:
                 - {party_instruction}
 
-                CRITICAL GUIDELINES (Quantity, Amount & Tax):
-                1. Extract the exact "Quantity" (Qty) mentioned for each item row. If not specified, write "1".
-                2. Extract the correct taxable "Amount" for that specific item row.
-                3. Map CGST, SGST, and IGST accurately either from item-level columns or by proportionally distributing the bottom tax summary table. Do not leave them as "0" if tax is visible.
+                CRITICAL EXTRACTION GUIDELINES:
+                1. "Rate": Price per single unit of the item.
+                2. "GST Rate": Percentage value of GST (e.g., 5, 12, 18, 28). If split like 2.5% CGST + 2.5% SGST, the total GST Rate is 5.
+                3. "Quantity": Exact quantity for each item row.
+                4. "Amount": Taxable value for that specific item row.
+                5. "CGST", "SGST", "IGST": Extract exact tax amounts for the item row. If taxes are shown in a summary table at the bottom, distribute them proportionally to each item row based on their taxable amounts. Do not leave them as "0" if tax values are visible.
 
                 MANDATORY JSON KEYS FOR EVERY ITEM ROW:
                 - "Invoice No" (Find the exact bill/invoice number)
                 - "Date" (Invoice date strictly in DD-MM-YYYY format)
-                - "Party GST No" (15-digit GSTIN of the correct party, or "Not Found")
+                - "Party GST No" (15-digit GSTIN, or "Not Found")
                 - "Party Name" (Name of the correct party)
-                - "Item Name" (Exact product description from the items table)
+                - "Item Name" (Exact product description)
                 - "HSN/SAC" (HSN code if present, else "Not Found")
-                - "Quantity" (Quantity of the item row, e.g., numbers like 5, 10, etc.)
-                - "Amount" (Taxable amount for that specific item row)
-                - "CGST" (Exact CGST amount for that item row, else "0")
-                - "SGST" (Exact SGST amount for that item row, else "0")
-                - "IGST" (Exact IGST amount for that item row, else "0")
+                - "Quantity" (Item quantity)
+                - "Rate" (Unit rate)
+                - "GST Rate" (GST percentage like 5, 12, 18)
+                - "Amount" (Taxable amount)
+                - "CGST" (CGST amount, else "0")
+                - "SGST" (SGST amount, else "0")
+                - "IGST" (IGST amount, else "0")
 
                 Invoice Text:
                 {text}
@@ -188,8 +191,8 @@ if uploaded_files:
           except Exception as rate_err:
             if "rate_limit" in str(rate_err).lower() or "429" in str(rate_err):
               if attempt < 3:
-                status_text.text(f"⏳ Rate limit hit. Waiting 6 seconds before retry ({attempt+1}/3) for '{file_name}'...")
-                time.sleep(6)
+                status_text.text(f"⏳ Rate limit hit. Waiting 8 seconds before retry ({attempt+1}/3) for '{file_name}'...")
+                time.sleep(8)
               else:
                 raise rate_err
             else:
@@ -222,7 +225,8 @@ if uploaded_files:
       except Exception as e:
         st.error(f"❌ Error processing {file_name}: {e}")
 
-      time.sleep(2.5)
+      # Safe delay between files to support 25+ bulk requests smoothly
+      time.sleep(3.5)
       progress_bar.progress((i + 1) / total_files)
 
     status_text.text("✨ Processing completed successfully!")
