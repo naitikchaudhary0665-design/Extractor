@@ -28,10 +28,6 @@ pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 )
 
-# Groq API Key Setup
-api_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else "Yahan_Apni_Groq_Key_Dalein"
-client = Groq(api_key=api_key)
-
 # --- 2. HEADER SECTION ---
 st.markdown(
     '<p class="main-title">📄 Tally Voucher Invoice Extractor</p>',
@@ -44,7 +40,20 @@ st.markdown(
 
 st.divider()
 
-# --- 3. INVOICE TYPE SELECTION ---
+# --- 3. API KEY INPUT BOX (Directly on UI) ---
+st.sidebar.header("🔑 API Configuration")
+user_api_key = st.sidebar.text_input("Enter your Groq API Key:", type="password")
+
+# Fallback to secrets if sidebar is empty
+api_key = user_api_key if user_api_key else (st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else "")
+
+if not api_key:
+    st.warning("⚠️ Please enter your Groq API Key in the sidebar to start processing invoices.")
+    st.stop()
+
+client = Groq(api_key=api_key)
+
+# --- 4. INVOICE TYPE SELECTION ---
 invoice_type = st.radio(
     "📌 Select Bill Type:",
     ("Sale", "Purchase"),
@@ -53,7 +62,7 @@ invoice_type = st.radio(
 
 st.write("")
 
-# --- 4. FILE UPLOADER ---
+# --- 5. FILE UPLOADER ---
 uploaded_files = st.file_uploader(
     "📁 Drop your Invoice Images or PDFs here (20-25+ files supported)",
     type=["pdf", "png", "jpg", "jpeg"],
@@ -158,7 +167,7 @@ if uploaded_files:
                 7. "Rate" (Price per unit)
                 8. "Amount" (Taxable value for that row)
                 9. "GST Rate" (Overall percentage like 5, 12, 18)
-                10. "CGST Output Amount" / "SGST Output Amount" (or Input depending on type, map exact row tax amounts)
+                10. "CGST Amount" / "SGST Amount" (Map exact row tax amounts)
                 11. "IGST Amount" (If applicable, else 0)
 
                 MANDATORY JSON KEYS FOR EVERY ITEM ROW:
