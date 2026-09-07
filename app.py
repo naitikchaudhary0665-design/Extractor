@@ -28,30 +28,33 @@ pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 )
 
-# --- 2. HEADER SECTION ---
+# --- 2. PERMANENT API KEY SETUP ---
+# Yahan apni Groq API key ek baar daal dein taaki baar-baar enter na karni pade:
+PERMANENT_API_KEY = "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"
+
+if PERMANENT_API_KEY and PERMANENT_API_KEY != "Yahan_Apni_Asli_Groq_Api_Key_Paste_Karein":
+    api_key = PERMANENT_API_KEY
+else:
+    # Fallback to Streamlit secrets if permanent key is not filled
+    api_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else ""
+
+if not api_key or api_key == "Yahan_Apni_Asli_Groq_Api_Key_Paste_Karein":
+    st.warning("⚠️ Please configure your Groq API Key inside the `PERMANENT_API_KEY` variable in the code.")
+    st.stop()
+
+client = Groq(api_key=api_key)
+
+# --- 3. HEADER SECTION ---
 st.markdown(
     '<p class="main-title">📄 Tally Voucher Invoice Extractor</p>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<p class="sub-text">Upload 20-25+ invoices to generate a clean Tally-ready Excel format with exact split tax and rate columns.</p>',
+    '<p class="sub-text">Upload 50+ invoices to generate a clean Tally-ready Excel format with exact split tax and rate columns.</p>',
     unsafe_allow_html=True,
 )
 
 st.divider()
-
-# --- 3. API KEY INPUT BOX (Directly on UI) ---
-st.sidebar.header("🔑 API Configuration")
-user_api_key = st.sidebar.text_input("Enter your Groq API Key:", type="password")
-
-# Fallback to secrets if sidebar is empty
-api_key = user_api_key if user_api_key else (st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else "")
-
-if not api_key:
-    st.warning("⚠️ Please enter your Groq API Key in the sidebar to start processing invoices.")
-    st.stop()
-
-client = Groq(api_key=api_key)
 
 # --- 4. INVOICE TYPE SELECTION ---
 invoice_type = st.radio(
@@ -62,9 +65,9 @@ invoice_type = st.radio(
 
 st.write("")
 
-# --- 5. FILE UPLOADER ---
+# --- 5. FILE UPLOADER (Supports 50+ files) ---
 uploaded_files = st.file_uploader(
-    "📁 Drop your Invoice Images or PDFs here (20-25+ files supported)",
+    "📁 Drop your Invoice Images or PDFs here (50+ files supported)",
     type=["pdf", "png", "jpg", "jpeg"],
     accept_multiple_files=True,
 )
@@ -190,7 +193,7 @@ if uploaded_files:
                 Return ONLY a valid JSON list starting with '[' and ending with ']'. No markdown ticks, no extra text.
                 """
 
-        # --- RATE LIMIT HANDLING & RETRY LOGIC ---
+        # --- RATE LIMIT HANDLING & RETRY LOGIC (Optimized for 50+ files) ---
         completion = None
         for attempt in range(4):
           try:
@@ -203,8 +206,8 @@ if uploaded_files:
           except Exception as rate_err:
             if "rate_limit" in str(rate_err).lower() or "429" in str(rate_err):
               if attempt < 3:
-                status_text.text(f"⏳ Rate limit hit. Waiting 8 seconds before retry ({attempt+1}/3)...")
-                time.sleep(8)
+                status_text.text(f"⏳ Rate limit hit. Waiting 10 seconds before retry ({attempt+1}/3)...")
+                time.sleep(10)
               else:
                 raise rate_err
             else:
@@ -233,7 +236,8 @@ if uploaded_files:
       except Exception as e:
         st.error(f"❌ Error processing {file_name}: {e}")
 
-      time.sleep(3.5)
+      # Safe delay for handling bulk 50+ files smoothly without 429 errors
+      time.sleep(4.5)
       progress_bar.progress((i + 1) / total_files)
 
     status_text.text("✨ Tally-ready Excel generated successfully!")
