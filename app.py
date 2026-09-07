@@ -29,13 +29,11 @@ pytesseract.pytesseract.tesseract_cmd = (
 )
 
 # --- 2. PERMANENT API KEY SETUP ---
-# Yahan apni Groq API key ek baar daal dein taaki baar-baar enter na karni pade:
 PERMANENT_API_KEY = "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"
 
 if PERMANENT_API_KEY and PERMANENT_API_KEY != "Yahan_Apni_Asli_Groq_Api_Key_Paste_Karein":
     api_key = PERMANENT_API_KEY
 else:
-    # Fallback to Streamlit secrets if permanent key is not filled
     api_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else ""
 
 if not api_key or api_key == "Yahan_Apni_Asli_Groq_Api_Key_Paste_Karein":
@@ -65,7 +63,7 @@ invoice_type = st.radio(
 
 st.write("")
 
-# --- 5. FILE UPLOADER (Supports 50+ files) ---
+# --- 5. FILE UPLOADER ---
 uploaded_files = st.file_uploader(
     "📁 Drop your Invoice Images or PDFs here (50+ files supported)",
     type=["pdf", "png", "jpg", "jpeg"],
@@ -193,12 +191,12 @@ if uploaded_files:
                 Return ONLY a valid JSON list starting with '[' and ending with ']'. No markdown ticks, no extra text.
                 """
 
-        # --- RATE LIMIT HANDLING & RETRY LOGIC (Optimized for 50+ files) ---
+        # --- RATE LIMIT HANDLING & RETRY LOGIC ---
         completion = None
         for attempt in range(4):
           try:
             completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
             )
@@ -236,7 +234,6 @@ if uploaded_files:
       except Exception as e:
         st.error(f"❌ Error processing {file_name}: {e}")
 
-      # Safe delay for handling bulk 50+ files smoothly without 429 errors
       time.sleep(4.5)
       progress_bar.progress((i + 1) / total_files)
 
